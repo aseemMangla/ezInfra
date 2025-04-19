@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: Aseem@abc3
+        # ports:
+        #   - 3306:3306
+        options: --health-cmd="mysqladmin ping --silent" --health-interval=10s --health-timeout=5s --health-retries=3
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Ruby 2.7.8
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: 2.7.8
+
+      - name: Install dependencies
+        run: |
+          gem install bundler -v 2.4.22
+          bundle install
+
+      - name: Prepare database config
+        run: cp config/database.yml.ci config/database.yml
+
+      - name: Set up database for test environment
+        run: |
+          RAILS_ENV=test bundle exec rake db:create
+          RAILS_ENV=test bundle exec rake db:migrate
+
+      - name: Run tests
+        run: |
+          RAILS_ENV=test bundle exec rspec  # or `rails test` if using Minitest
