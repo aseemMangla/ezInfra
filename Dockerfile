@@ -19,7 +19,7 @@ COPY . .
 # RUN bundle exec rake db:migrate
 
 # Expose port
-EXPOSE 3000
+EXPOSE 3200
 
 # Start server
-CMD ["rails", "server", "-b", "0.0.0.0"]
+CMD ["rails", "server", "-b", "0.0.0.0", "-p", "3200"]

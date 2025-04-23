@@ -3,7 +3,8 @@ default: &default
   encoding: utf8mb4
   collation: utf8mb4_unicode_ci
   username: <%= ENV['DATABASE_USERNAME'] || 'root' %>
-  password: <%= ENV['DATABASE_PASSWORD'] || 'root' %>
+  password: <%= ENV['DATABASE_PASSWORD'] || 'Aseem@abc3' %>
+  host: <%= ENV["DATABASE_HOST"] || "127.0.0.1" %>
   port: 3306
   pool: 5
   timeout: 5000
@@ -11,7 +12,6 @@ default: &default
 
 development:
   <<: *default
-  host: 127.0.0.1
   database: ezinfra_development
 
 test:
