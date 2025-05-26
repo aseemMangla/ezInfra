@@ -1,37 +1,91 @@
 name: Sync UI Build to Main App
-# This workflow will be triggered manually from the GitHub Actions UI
+
 on:
   workflow_dispatch:
     inputs:
       UI_SRC_BRANCH:
-        description: 'UI Source Branch (check available branches in repo)'
+        description: "UI Source Branch (check available branches in repo)"
         required: true
-        default: 'master'
+        default: "master"
         type: string
       APP_SRC_BRANCH:
-        description: 'App Source Branch (check available branches in repo)'
+        description: "App Source Branch (check available branches in repo)"
         required: true
-        default: 'master'
+        default: "master"
         type: string
       APP_DEST_BRANCH:
-        description: 'App Destination Branch'
+        description: "App Destination Branch"
         required: true
-        default: 'feature/UIv2/BUNDLE_NAME'
+        default: "feature/UIv2/BUNDLE_NAME"
         type: string
+
 jobs:
-  checkout-ui-repo:
+  sync-ui-build:
     runs-on: ubuntu-latest
+    env:
+      EZCALL_UI_PATH: scheduling-oracle
+      EZCALL_APP_PATH: ezcall-main-app
     steps:
-      - name: Checkout UI Repo branch ${{ github.event.inputs.UI_SRC_BRANCH }}
+      - name: Checkout UI Repo
         uses: actions/checkout@v4
         with:
           repository: aseemMangla/Scheduling-Oracle
           ref: ${{ github.event.inputs.UI_SRC_BRANCH }}
           token: ${{ secrets.EZCALL_BOT }}
-          path: scheduling-oracle
+          path: ${{ env.EZCALL_UI_PATH }}
 
-      - name: Show last 5 commits in UI_SRC_BRANCH
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      - name: Install UI dependencies
+        working-directory: ${{ env.EZCALL_UI_PATH }}
+        run: yarn install
+
+      - name: Build UI
+        working-directory: ${{ env.EZCALL_UI_PATH }}
+        run: yarn build
+
+      - name: Checkout App Repo
+        uses: actions/checkout@v4
+        with:
+          repository: aseemMangla/ezcall
+          ref: ${{ github.event.inputs.APP_SRC_BRANCH }}
+          token: ${{ secrets.EZCALL_BOT }}
+          path: ${{ env.EZCALL_APP_PATH }}
+
+      - name: Create or switch to destination branch
+        working-directory: ${{ env.EZCALL_APP_PATH }}
         run: |
-          cd scheduling-oracle
-          echo "Last 5 commits in branch ${{ github.event.inputs.UI_SRC_BRANCH }}:"
-          git log -n 5 --oneline
+          git config user.name "ezcall-bot"
+          git config user.email "ezcall-bot@users.noreply.github.com"
+          git checkout -B ${{ github.event.inputs.APP_DEST_BRANCH }}
+
+      - name: Copy build artifactss
+        env:
+          UI_REPO_PATH: scheduling-oracle
+        run: |
+          APP_REPO_PATH=$(basename "${GITHUB_REPOSITORY}")
+          echo "Copy css bundle ..."
+          cp $UI_REPO_PATH/build/static/css/*.css $APP_REPO_PATH/app/assets/stylesheets/beta
+          echo "Copy js bundle ..."
+          cp $UI_REPO_PATH/build/static/js/*.js $APP_REPO_PATH/app/assets/javascripts/beta
+          echo "Copy fonts bundle ..."
+          cp $UI_REPO_PATH/build/static/fonts/*.* $APP_REPO_PATH/app/assets/fonts/beta
+      - name: Commit and push changes
+        working-directory: ${{ env.EZCALL_APP_PATH }}
+        run: |
+          git add .
+          git commit -m "build test"
+          git push origin ${{ github.event.inputs.APP_DEST_BRANCH }}
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.EZCALL_BOT }}
+          path: ${{ env.EZCALL_APP_PATH }}
+          source: ${{ github.event.inputs.APP_DEST_BRANCH }}
+          base: ${{ github.event.inputs.APP_SRC_BRANCH }}
+          title: "UI Build Sync: ${{ github.event.inputs.APP_DEST_BRANCH }}"
+          body: "Automated PR to sync UI build from `${{ github.event.inputs.UI_SRC_BRANCH }}` into `${{ github.event.inputs.APP_DEST_BRANCH }}`"
