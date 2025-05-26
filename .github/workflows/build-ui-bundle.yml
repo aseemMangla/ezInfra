@@ -1,22 +1,89 @@
-name: Sync UI Build to Main App
+name: UI Repository Workflow
 
-# This workflow will be triggered manually from the GitHub Actions UI
 on:
   workflow_dispatch:
     inputs:
-      branch_name:
-        description: "Name of the branch to create in mainapp repo"
+      UI_SRC_BRANCH:
+        description: "UI Source Branch"
         required: true
-        default: "ui-update"
-      commit_message:
-        description: "Commit message"
+        default: "master"
+        type: choice
+        options:
+          - master
+          - main
+          - develop
+          - staging
+          # Add more branches as needed
+      APP_SRC_BRANCH:
+        description: "App Source Branch"
         required: true
-        default: "Update UI assets from latest build"
-      pr_title:
-        description: "Pull Request title"
+        default: "master"
+        type: choice
+        options:
+          - master
+          - main
+          - develop
+          - staging
+          # Add more branches as needed
+      APP_DEST_BRANCH:
+        description: "App Destination Branch"
         required: true
-        default: "Update UI assets"
-      pr_description:
-        description: "Pull Request description"
-        required: true
-        default: "This PR updates the UI assets from the latest UI build"
+        default: 'feature/UIv2/${{ github.event.inputs.BUNDLE_NAME || "default" }}'
+        type: string
+      BUNDLE_NAME:
+        description: "Bundle Name (used in destination branch)"
+        required: false
+        type: string
+
+env:
+  UI_REPO_URL: "https://github.com/aseemMangla/Scheduling-Oracle.git"
+
+jobs:
+  checkout-and-process:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout UI Repository
+        uses: actions/checkout@v4
+        with:
+          repository: "aseemMangla/Scheduling-Oracle"
+          ref: ${{ github.event.inputs.UI_SRC_BRANCH }}
+          token: ${{ secrets.EZCALL_BOT }}
+          path: "ui-repo"
+
+      - name: Display Workflow Parameters
+        run: |
+          echo "=== Workflow Parameters ==="
+          echo "UI Source Branch: ${{ github.event.inputs.UI_SRC_BRANCH }}"
+          echo "App Source Branch: ${{ github.event.inputs.APP_SRC_BRANCH }}"
+          echo "App Destination Branch: ${{ github.event.inputs.APP_DEST_BRANCH }}"
+          echo "Bundle Name: ${{ github.event.inputs.BUNDLE_NAME }}"
+          echo "=========================="
+
+      - name: List Repository Contents
+        run: |
+          echo "=== UI Repository Contents ==="
+          ls -la ui-repo/
+          echo "=============================="
+
+      - name: Get Available Branches
+        run: |
+          cd ui-repo
+          echo "=== Available Branches ==="
+          git branch -r | grep -v HEAD | sed 's/origin\///' | sort
+          echo "========================="
+
+      # Add your additional workflow steps here
+      # For example:
+      # - name: Build UI
+      #   run: |
+      #     cd ui-repo
+      #     npm install
+      #     npm run build
+
+      # - name: Deploy or Process
+      #   run: |
+      #     echo "Processing with branches:"
+      #     echo "Source: ${{ github.event.inputs.UI_SRC_BRANCH }}"
+      #     echo "App Source: ${{ github.event.inputs.APP_SRC_BRANCH }}"
+      #     echo "Destination: ${{ github.event.inputs.APP_DEST_BRANCH }}"
