@@ -63,14 +63,14 @@ jobs:
 
       - name: Install UI dependencies
         working-directory: ${{ env.EZCALL_UI_PATH }}
-        env:
-          CI: false  # This will ignore warnings and not treat them as errors
         run: |
           echo "Installing UI dependencies..."
           yarn install --frozen-lockfile --non-interactive
 
       - name: Build UI
         working-directory: ${{ env.EZCALL_UI_PATH }}
+        env:
+          CI: false  # This will ignore warnings and not treat them as errors
         run: |
           echo "Building UI application..."
           yarn build
