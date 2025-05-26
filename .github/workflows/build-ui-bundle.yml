@@ -6,12 +6,12 @@ on:
       UI_SRC_BRANCH:
         description: "UI Source Branch (check available branches in repo)"
         required: true
-        default: "master"
+        default: "main"
         type: string
       APP_SRC_BRANCH:
         description: "App Source Branch (check available branches in repo)"
         required: true
-        default: "master"
+        default: "main"
         type: string
       APP_DEST_BRANCH:
         description: "App Destination Branch"
@@ -127,21 +127,21 @@ jobs:
 
           echo "Build artifacts copy completed"
 
-      - name: Check for changes
-        id: check_changes
-        working-directory: ${{ env.EZCALL_APP_PATH }}
-        run: |
-          if git diff --quiet && git diff --cached --quiet; then
-            echo "No changes detected"
-            echo "has_changes=false" >> $GITHUB_OUTPUT
-          else
-            echo "Changes detected"
-            echo "has_changes=true" >> $GITHUB_OUTPUT
-            git status --porcelain
-          fi
+      # - name: Check for changes
+      #   id: check_changes
+      #   working-directory: ${{ env.EZCALL_APP_PATH }}
+      #   run: |
+      #     if git diff --quiet && git diff --cached --quiet; then
+      #       echo "No changes detected"
+      #       echo "has_changes=false" >> $GITHUB_OUTPUT
+      #     else
+      #       echo "Changes detected"
+      #       echo "has_changes=true" >> $GITHUB_OUTPUT
+      #       git status --porcelain
+      #     fi
 
       - name: Commit and push changes
-        if: steps.check_changes.outputs.has_changes == 'true'
+        # if: steps.check_changes.outputs.has_changes == 'true'
         working-directory: ${{ env.EZCALL_APP_PATH }}
         run: |
           echo "Committing changes..."
