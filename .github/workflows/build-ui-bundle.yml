@@ -1,73 +1,30 @@
-jobs:
-  list-branches:
-    runs-on: ubuntu-latest
-    outputs:
-      branches: ${{ steps.get-branches.outputs.branches }}
-    
-    steps:
-      - name: Get Repository Branches
-        id: get-branches
-        run: |
-          echo "=== Fetching Available Branches ==="
-          BRANCHES=$(curl -s -H "Authorization: token ${{ secrets.EZ_BOT }}" \
-            "https://api.github.com/repos/aseemMangla/Scheduling-Oracle/branches" | \
-            jq -r '.[].name' | tr '\n' ' ')
-          
-          echo "Available branches: $BRANCHES"
-          echo "branches=$BRANCHES" >> $GITHUB_OUTPUT
-          
-          # Display branches for user reference
-          echo "=== Available Branches in Repository ==="
-          echo "$BRANCHES" | tr ' ' '\n' | sort
-          echo "========================================"
-
-  checkout-and-process:
-    runs-on: ubuntu-latest
-    needs: list-branches
-    
-    steps:
-      - name: Display Available Branches
-        run: |
-          echo "=== Available Branches ==="
-          echo "${{ needs.list-branches.outputs.branches }}" | tr ' ' '\n' | sort
-          echo "========================="
-          echo ""
-          echo "Selected branches:"
-          echo "UI Source Branch: ${{ github.event.inputs.UI_SRC_BRANCH }}"
-          echo "App Source Branch: ${{ github.event.inputs.APP_SRC_BRANCH }}"
-      
-      - name: Validate Branch Existence
-        run: |
-          AVAILABLE_BRANCHES="${{ needs.list-branches.outputs.branches }}"
-          UI_BRANCH="${{ github.event.inputs.UI_SRC_BRANCH }}"
-          APP_BRANCH="${{ github.event.inputs.APP_SRC_BRANCH }}"
-          
-          echo "Validating branches..."
-          
-          if echo "$AVAILABLE_BRANCHES" | grep -q "\b$UI_BRANCH\b"; then
-            echo "✅ UI Source Branch '$UI_BRANCH' exists"
-          else
-            echo "❌ UI Source Branch '$UI_BRANCH' does not exist"
-            echo "Available branches: $(echo $AVAILABLE_BRANCHES | tr ' ' '\n' | sort | tr '\n' ' ')"
-            exit 1
-          fi
-          
-          if echo "$AVAILABLE_BRANCHES" | grep -q "\b$APP_BRANCH\b"; then
-       name: UI Repository Workflow
+name: UI Repository Workflow
 
 on:
   workflow_dispatch:
     inputs:
       UI_SRC_BRANCH:
-        description: 'UI Source Branch (check available branches in repo)'
+        description: 'UI Source Branch'
         required: true
         default: 'master'
-        type: string
+        type: choice
+        options:
+          - master
+          - main
+          - develop
+          - staging
+          # Add more branches as needed
       APP_SRC_BRANCH:
-        description: 'App Source Branch (check available branches in repo)'
+        description: 'App Source Branch'
         required: true
         default: 'master'
-        type: string
+        type: choice
+        options:
+          - master
+          - main
+          - develop
+          - staging
+          # Add more branches as needed
       APP_DEST_BRANCH:
         description: 'App Destination Branch'
         required: true
