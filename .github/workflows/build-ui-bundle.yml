@@ -18,3 +18,20 @@ on:
         required: true
         default: 'feature/UIv2/BUNDLE_NAME'
         type: string
+jobs:
+  checkout-ui-repo:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout UI Repo branch ${{ github.event.inputs.UI_SRC_BRANCH }}
+        uses: actions/checkout@v4
+        with:
+          repository: aseemMangla/Scheduling-Oracle
+          ref: ${{ github.event.inputs.UI_SRC_BRANCH }}
+          token: ${{ secrets.EZ_BOT }}
+          path: scheduling-oracle
+
+      - name: Show last 5 commits in UI_SRC_BRANCH
+        run: |
+          cd scheduling-oracle
+          echo "Last 5 commits in branch ${{ github.event.inputs.UI_SRC_BRANCH }}:"
+          git log -n 5 --oneline
