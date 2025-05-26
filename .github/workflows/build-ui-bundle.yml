@@ -115,15 +115,15 @@ jobs:
 
           # Copy CSS files
           echo "Copying CSS files..."
-          cp $UI_BUILD_PATH/static/css/*.css $APP_PATH/app/assets/stylesheets/beta/
+          cp $UI_BUILD_PATH/static/css/*.css $APP_PATH/app/assets/stylesheets
 
           # Copy JS files
           echo "Copying JS files..."
-          cp $UI_BUILD_PATH/static/js/*.js $APP_PATH/app/assets/javascripts/beta/
+          cp $UI_BUILD_PATH/static/js/*.js $APP_PATH/app/assets/javascripts
 
           # Copy font files
           echo "Copying font files..."
-          cp $UI_BUILD_PATH/static/fonts/* $APP_PATH/app/assets/fonts/beta/
+          cp $UI_BUILD_PATH/static/fonts/* $APP_PATH/app/assets/fonts
 
           echo "Build artifacts copy completed"
 
