@@ -1,0 +1,22 @@
+name: Sync UI Build to Main App
+
+# This workflow will be triggered manually from the GitHub Actions UI
+on:
+  workflow_dispatch:
+    inputs:
+      branch_name:
+        description: "Name of the branch to create in mainapp repo"
+        required: true
+        default: "ui-update"
+      commit_message:
+        description: "Commit message"
+        required: true
+        default: "Update UI assets from latest build"
+      pr_title:
+        description: "Pull Request title"
+        required: true
+        default: "Update UI assets"
+      pr_description:
+        description: "Pull Request description"
+        required: true
+        default: "This PR updates the UI assets from the latest UI build"
