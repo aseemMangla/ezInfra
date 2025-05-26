@@ -1,5 +1,5 @@
-name: UI Repository Workflow
-
+name: Sync UI Build to Main App
+# This workflow will be triggered manually from the GitHub Actions UI
 on:
   workflow_dispatch:
     inputs:
@@ -16,9 +16,5 @@ on:
       APP_DEST_BRANCH:
         description: 'App Destination Branch'
         required: true
-        default: 'feature/UIv2/${{ github.event.inputs.BUNDLE_NAME || "default" }}'
-        type: string
-      BUNDLE_NAME:
-        description: 'Bundle Name (used in destination branch)'
-        required: false
+        default: 'feature/UIv2/BUNDLE_NAME'
         type: string
