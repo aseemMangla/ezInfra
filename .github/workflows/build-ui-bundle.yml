@@ -19,13 +19,32 @@ on:
         default: "feature/UIv2/BUNDLE_NAME"
         type: string
 
+# permissions:
+#   contents: read
+#   pull-requests: write
+#   repository-projects: write
+
 jobs:
   sync-ui-build:
     runs-on: ubuntu-latest
     env:
-      EZCALL_UI_PATH: scheduling-oracle
-      EZCALL_APP_PATH: ezcall-main-app
+      EZCALL_UI_PATH: Scheduling-Oracle
+      EZCALL_APP_PATH: ezInfra
+
     steps:
+      - name: Validate inputs
+        run: |
+          echo "Validating workflow inputs..."
+          echo "UI Source Branch: ${{ github.event.inputs.UI_SRC_BRANCH }}"
+          echo "App Source Branch: ${{ github.event.inputs.APP_SRC_BRANCH }}"
+          echo "App Destination Branch: ${{ github.event.inputs.APP_DEST_BRANCH }}"
+
+          # Basic validation for branch names
+          if [[ "${{ github.event.inputs.UI_SRC_BRANCH }}" =~ [^a-zA-Z0-9/_.-] ]]; then
+            echo "Invalid characters in UI branch name"
+            exit 1
+          fi
+
       - name: Checkout UI Repo
         uses: actions/checkout@v4
         with:
@@ -33,27 +52,50 @@ jobs:
           ref: ${{ github.event.inputs.UI_SRC_BRANCH }}
           token: ${{ secrets.EZCALL_BOT }}
           path: ${{ env.EZCALL_UI_PATH }}
+          fetch-depth: 1
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "18"
+          cache: "yarn"
+          cache-dependency-path: ${{ env.EZCALL_UI_PATH }}/yarn.lock
 
       - name: Install UI dependencies
         working-directory: ${{ env.EZCALL_UI_PATH }}
-        run: yarn install
+        run: |
+          echo "Installing UI dependencies..."
+          yarn install --frozen-lockfile --non-interactive
 
       - name: Build UI
         working-directory: ${{ env.EZCALL_UI_PATH }}
-        run: yarn build
+        run: |
+          echo "Building UI application..."
+          yarn build
+
+          # Verify build was successful
+          if [ ! -d "build" ]; then
+            echo "Build failed - no build directory found"
+            exit 1
+          fi
+
+          echo "Build completed successfully"
+          ls -la build/
 
       - name: Checkout App Repo
         uses: actions/checkout@v4
         with:
-          repository: aseemMangla/ezcall
+          repository: aseemMangla/ezInfra
           ref: ${{ github.event.inputs.APP_SRC_BRANCH }}
           token: ${{ secrets.EZCALL_BOT }}
           path: ${{ env.EZCALL_APP_PATH }}
+          fetch-depth: 0
+
+      - name: Setup Git configuration
+        working-directory: ${{ env.EZCALL_APP_PATH }}
+        run: |
+          git config user.name "ezcall-bot"
+          git config user.email "ezcall-bot@users.noreply.github.com"
 
       - name: Create or switch to destination branch
         working-directory: ${{ env.EZCALL_APP_PATH }}
@@ -62,30 +104,100 @@ jobs:
           git config user.email "ezcall-bot@users.noreply.github.com"
           git checkout -B ${{ github.event.inputs.APP_DEST_BRANCH }}
 
-      - name: Copy build artifactss
-        env:
-          UI_REPO_PATH: scheduling-oracle
+      - name: Copy build artifacts
         run: |
-          APP_REPO_PATH=$(basename "${GITHUB_REPOSITORY}")
-          echo "Copy css bundle ..."
-          cp $UI_REPO_PATH/build/static/css/*.css $APP_REPO_PATH/app/assets/stylesheets/beta
-          echo "Copy js bundle ..."
-          cp $UI_REPO_PATH/build/static/js/*.js $APP_REPO_PATH/app/assets/javascripts/beta
-          echo "Copy fonts bundle ..."
-          cp $UI_REPO_PATH/build/static/fonts/*.* $APP_REPO_PATH/app/assets/fonts/beta
-      - name: Commit and push changes
+          echo "Copying build artifacts..."
+
+          UI_BUILD_PATH="${{ env.EZCALL_UI_PATH }}/build"
+          APP_PATH="${{ env.EZCALL_APP_PATH }}"
+
+          # Copy CSS files
+          echo "Copying CSS files..."
+          cp $UI_BUILD_PATH/static/css/*.css $APP_PATH/app/assets/stylesheets/beta/
+
+          # Copy JS files
+          echo "Copying JS files..."
+          cp $UI_BUILD_PATH/static/js/*.js $APP_PATH/app/assets/javascripts/beta/
+
+          # Copy font files
+          echo "Copying font files..."
+          cp $UI_BUILD_PATH/static/fonts/* $APP_PATH/app/assets/fonts/beta/
+
+          echo "Build artifacts copy completed"
+
+      - name: Check for changes
+        id: check_changes
         working-directory: ${{ env.EZCALL_APP_PATH }}
         run: |
+          if git diff --quiet && git diff --cached --quiet; then
+            echo "No changes detected"
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          else
+            echo "Changes detected"
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            git status --porcelain
+          fi
+
+      - name: Commit and push changes
+        if: steps.check_changes.outputs.has_changes == 'true'
+        working-directory: ${{ env.EZCALL_APP_PATH }}
+        run: |
+          echo "Committing changes..."
           git add .
-          git commit -m "build test"
+
+          # Create detailed commit message
+          COMMIT_MSG="Sync UI build from ${{ github.event.inputs.UI_SRC_BRANCH }} to ${{ github.event.inputs.APP_DEST_BRANCH }}
+
+          - Source UI branch: ${{ github.event.inputs.UI_SRC_BRANCH }}
+          - Target app branch: ${{ github.event.inputs.APP_DEST_BRANCH }}
+          - Workflow run: ${{ github.run_id }}
+          - Triggered by: ${{ github.actor }}"
+
+          git commit -m "$COMMIT_MSG"
           git push origin ${{ github.event.inputs.APP_DEST_BRANCH }}
+          echo "Changes committed and pushed successfully"
 
       - name: Create Pull Request
+        if: steps.check_changes.outputs.has_changes == 'true'
         uses: peter-evans/create-pull-request@v6
         with:
           token: ${{ secrets.EZCALL_BOT }}
           path: ${{ env.EZCALL_APP_PATH }}
-          source: ${{ github.event.inputs.APP_DEST_BRANCH }}
+          branch: ${{ github.event.inputs.APP_DEST_BRANCH }}
           base: ${{ github.event.inputs.APP_SRC_BRANCH }}
-          title: "UI Build Sync: ${{ github.event.inputs.APP_DEST_BRANCH }}"
-          body: "Automated PR to sync UI build from `${{ github.event.inputs.UI_SRC_BRANCH }}` into `${{ github.event.inputs.APP_DEST_BRANCH }}`"
+          title: "🔄 UI Build Sync: ${{ github.event.inputs.UI_SRC_BRANCH }} → ${{ github.event.inputs.APP_DEST_BRANCH }}"
+          body: |
+            ## UI Build Sync
+
+            This PR contains the latest UI build artifacts synchronized from the UI repository.
+
+            ### Details
+            - **UI Source Branch:** `${{ github.event.inputs.UI_SRC_BRANCH }}`
+            - **App Source Branch:** `${{ github.event.inputs.APP_SRC_BRANCH }}`
+            - **App Destination Branch:** `${{ github.event.inputs.APP_DEST_BRANCH }}`
+            - **Workflow Run:** [${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            - **Triggered by:** @${{ github.actor }}
+
+            ### Files Updated
+            - CSS bundles in `app/assets/stylesheets/beta/`
+            - JS bundles in `app/assets/javascripts/beta/`
+            - Font files in `app/assets/fonts/beta/` (if applicable)
+
+            ---
+            *This PR was automatically generated by the UI Build Sync workflow.*
+          draft: false
+          delete-branch: false
+
+      - name: Workflow Summary
+        run: |
+          echo "## Workflow Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- **UI Source Branch:** ${{ github.event.inputs.UI_SRC_BRANCH }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **App Source Branch:** ${{ github.event.inputs.APP_SRC_BRANCH }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **App Destination Branch:** ${{ github.event.inputs.APP_DEST_BRANCH }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Changes Detected:** ${{ steps.check_changes.outputs.has_changes }}" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ steps.check_changes.outputs.has_changes }}" = "true" ]; then
+            echo "- **Status:** ✅ Build artifacts synchronized and PR created" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- **Status:** ℹ️ No changes detected, no PR created" >> $GITHUB_STEP_SUMMARY
+          fi
