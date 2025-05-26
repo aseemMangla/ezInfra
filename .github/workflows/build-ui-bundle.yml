@@ -123,7 +123,7 @@ jobs:
 
           # Copy font files
           echo "Copying font files..."
-          cp $UI_BUILD_PATH/static/fonts/* $APP_PATH/app/assets/fonts/beta
+          # cp $UI_BUILD_PATH/static/fonts/* $APP_PATH/app/assets/fonts/beta
 
           echo "Build artifacts copy completed"
 
