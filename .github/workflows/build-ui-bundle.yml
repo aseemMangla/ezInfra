@@ -27,7 +27,7 @@ jobs:
         with:
           repository: aseemMangla/Scheduling-Oracle
           ref: ${{ github.event.inputs.UI_SRC_BRANCH }}
-          token: ${{ secrets.EZ_BOT }}
+          token: ${{ secrets.EZCALL_BOT }}
           path: scheduling-oracle
 
       - name: Show last 5 commits in UI_SRC_BRANCH
